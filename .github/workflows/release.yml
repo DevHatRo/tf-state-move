@@ -74,22 +74,11 @@ jobs:
     needs: [goreleaser]
     runs-on: ubuntu-latest
     steps:
-      - name: Get version from ref
-        id: get_version
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            VERSION=${GITHUB_REF#refs/tags/}
-          else
-            VERSION=${{ steps.bump_version.outputs.new_version }}
-          fi
-          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-
       - name: Update Homebrew formula
-        uses: dawidd6/action-homebrew-bump-formula@v3
+        uses: dawidd6/action-homebrew-bump-formula@v4
         with:
-          token: ${{ secrets.GH_PAT }}
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
-          tag: ${{ steps.bump_version.outputs.new_version }}
+          tag: ${{ needs.auto-tag.outputs.new_version }}
           revision: ${{ github.sha }}
           force: true 
