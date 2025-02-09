@@ -77,8 +77,13 @@ jobs:
       - name: Get version from ref
         id: get_version
         run: |
-          REF=${{ github.ref }}
-          echo "VERSION=${REF#refs/tags/}" >> $GITHUB_OUTPUT
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=${{ needs.auto-tag.outputs.new_version }}
+          fi
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "URL=https://github.com/DevHatRo/tf-state-move/archive/${VERSION}.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v3
@@ -86,6 +91,6 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
-          tag: ${{ needs.auto-tag.outputs.new_version || steps.get_version.outputs.VERSION }}
+          tag: ${{ steps.get_version.outputs.VERSION }}
           revision: ${{ github.sha }}
-          version: ${{ needs.auto-tag.outputs.new_version || steps.get_version.outputs.VERSION }} 
+          url: ${{ steps.get_version.outputs.URL }} 
