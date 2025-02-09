@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -19,7 +20,13 @@ func getFilePath(flagValue, promptText, defaultPath string) (string, error) {
 	}
 	fmt.Printf("%s [%s]: ", promptText, defaultPath)
 	var input string
-	fmt.Scanln(&input)
+	_, err := fmt.Scanln(&input)
+	if err != nil {
+		if err == io.EOF {
+			return defaultPath, nil
+		}
+		return "", fmt.Errorf("error reading input: %w", err)
+	}
 	if input == "" {
 		return defaultPath, nil
 	}
@@ -35,4 +42,4 @@ Options:
   -i, --in-state-path      Input state file path
   -o, --out-state-path     Output state file path
   --debug                  Enable debug output`)
-} 
+}

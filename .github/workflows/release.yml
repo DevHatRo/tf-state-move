@@ -8,45 +8,27 @@ on:
       - 'v*'
 
 jobs:
-  auto-tag:
+  version:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
-      new_version: ${{ steps.bump_version.outputs.new_version }}
+      new_version: ${{ steps.semver.outputs.new_version }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get latest tag
-        id: get_latest_tag
-        run: |
-          git fetch --tags
-          latest_tag=$(git tag -l 'v*' --sort=-v:refname | head -n 1)
-          if [ -z "$latest_tag" ]; then
-            echo "version=v0.0.0" >> $GITHUB_OUTPUT
-          else
-            echo "version=$latest_tag" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Bump version
-        id: bump_version
-        run: |
-          current_version=${{ steps.get_latest_tag.outputs.version }}
-          major=$(echo $current_version | cut -d. -f1)
-          minor=$(echo $current_version | cut -d. -f2)
-          patch=$(echo $current_version | cut -d. -f3)
-          new_patch=$((patch + 1))
-          new_version="${major}.${minor}.${new_patch}"
-          echo "new_version=$new_version" >> $GITHUB_OUTPUT
-
-      - name: Create and push tag
-        run: |
-          git tag ${{ steps.bump_version.outputs.new_version }}
-          git push origin ${{ steps.bump_version.outputs.new_version }}
+      - name: Bump version and push tag
+        id: semver
+        uses: anothrNick/github-tag-action@1.67.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_PAT }}
+          WITH_V: true
+          DEFAULT_BUMP: patch
+          RELEASE_BRANCHES: main
 
   goreleaser:
-    needs: [auto-tag]
+    needs: [version]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     steps:
@@ -69,7 +51,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.GH_PAT }}
-          HOMEBREW_BUMP_TAG: ${{ needs.auto-tag.outputs.new_version }}
+          HOMEBREW_BUMP_TAG: ${{ needs.version.outputs.new_version }}
 
   homebrew:
     needs: [goreleaser]
@@ -78,6 +60,7 @@ jobs:
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v4
         with:
+          token: ${{ secrets.GH_PAT }}
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
           revision: ${{ github.sha }}

@@ -7,8 +7,44 @@ on:
     branches: [ main ]
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v4
+        with:
+          version: v1.54.2
+          args: --timeout=5m
+          skip-cache: true
+          only-new-issues: false
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
+
+      - name: Run tests
+        run: go test -v -race -coverprofile=coverage.txt -covermode=atomic ./...
+
   build:
     name: Build
+    needs: [lint, test]
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -25,20 +61,22 @@ jobs:
             asset_name: tf-state-move-darwin-amd64
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
-    - name: Set up Go
-      uses: actions/setup-go@v4
-      with:
-        go-version: '1.21'
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          cache: true
 
-    - name: Build
-      run: |
-        go mod tidy
-        go build -v -o ${{ matrix.artifact_name }}
+      - name: Build
+        run: |
+          go mod tidy
+          go build -v -o ${{ matrix.artifact_name }}
 
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.asset_name }}
-        path: ${{ matrix.artifact_name }} 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.artifact_name }}
+          retention-days: 5 

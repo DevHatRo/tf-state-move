@@ -1,0 +1,31 @@
+linters:
+  enable:
+    - gofmt
+    - govet
+    - errcheck
+    - staticcheck
+    - gosimple
+    - ineffassign
+    - unused
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
+    ignore: fmt:.*,write,Close
+
+  govet:
+    enable:
+      - shadow
+
+run:
+  go: "1.21"
+  deadline: 5m
+  tests: false
+  skip-files: []
+  skip-dirs: []
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0

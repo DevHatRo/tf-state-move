@@ -16,7 +16,7 @@ type UI struct {
 	items         []SelectionItem
 	selectedItems map[string]bool
 	currentIndex  int
-	origin        int        // Add this field to track scroll position
+	origin        int // Add this field to track scroll position
 	gui           *gocui.Gui
 	inStatePath   string
 	outStatePath  string
@@ -27,7 +27,7 @@ func newUI(choices []SelectionItem, inPath, outPath string) *UI {
 		items:         choices,
 		selectedItems: make(map[string]bool),
 		currentIndex:  0,
-		origin:       0,
+		origin:        0,
 		inStatePath:   inPath,
 		outStatePath:  outPath,
 	}
@@ -56,7 +56,7 @@ func (ui *UI) run() error {
 
 func (ui *UI) layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	
+
 	// Main view (left panel)
 	if v, err := g.SetView(mainView, 0, 0, maxX/2-1, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
@@ -76,7 +76,7 @@ func (ui *UI) layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = fmt.Sprintf("Selected Resources (PgUp/PgDn: scroll, Home/End: jump)")
+		v.Title = "Selected Resources (PgUp/PgDn: scroll, Home/End: jump)"
 		v.Wrap = true
 	}
 
@@ -187,12 +187,18 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 			selected = "[ ]"
 		}
 
-		line := fmt.Sprintf("%s %s %s", prefix, selected, item.Display)
-		fmt.Fprintln(v, line)
+		line := prefix + " " + selected + " " + item.Display
+		if _, err := fmt.Fprintln(v, line); err != nil {
+			return fmt.Errorf("failed to write line: %w", err)
+		}
 	}
 
 	// Set cursor relative to origin
-	v.SetCursor(0, ui.currentIndex-ui.origin)
+	if err := v.SetCursor(0, ui.currentIndex-ui.origin); err != nil {
+		if err != gocui.ErrUnknownView {
+			return fmt.Errorf("failed to set cursor: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -218,11 +224,15 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	sort.Strings(selectedResources)
 
 	// Show count
-	fmt.Fprintf(v, "Selected: %d resource(s)\n\n", selectedCount)
+	if _, err := fmt.Fprintf(v, "Selected: %d resource(s)\n\n", selectedCount); err != nil {
+		return fmt.Errorf("failed to write count: %w", err)
+	}
 
-	// Show selected resources with their full paths including indices
+	// Show selected resources
 	for _, resource := range selectedResources {
-		fmt.Fprintf(v, "• %s\n", resource)
+		if _, err := fmt.Fprintf(v, "• %s\n", resource); err != nil {
+			return fmt.Errorf("failed to write resource: %w", err)
+		}
 	}
 
 	return nil
@@ -255,7 +265,7 @@ func (ui *UI) toggleSelection(g *gocui.Gui, v *gocui.View) error {
 	if item.IsModule {
 		// Use the exact resource paths with indices
 		for _, resource := range item.Resources {
-			fullPath := fmt.Sprintf("module.%s.%s", item.ModuleName, resource)
+			fullPath := "module." + item.ModuleName + "." + resource
 			ui.selectedItems[fullPath] = item.IsSelected
 		}
 
@@ -293,14 +303,14 @@ func (ui *UI) expandModule(item *SelectionItem) {
 
 	// Create new items for module resources
 	newItems := make([]SelectionItem, 0, len(item.Resources))
-	
+
 	for _, resource := range item.Resources {
 		// The resource string already includes indices from resources.go
-		fullPath := fmt.Sprintf("module.%s.%s", item.ModuleName, resource)
-		
+		fullPath := "module." + item.ModuleName + "." + resource
+
 		newItems = append(newItems, SelectionItem{
-			Display:    resource,     // Show just the resource part (which includes indices)
-			Value:      fullPath,     // Keep full path for selection/state operations
+			Display:    resource, // Show just the resource part (which includes indices)
+			Value:      fullPath, // Keep full path for selection/state operations
 			IsModule:   false,
 			ModuleName: item.ModuleName,
 			Level:      item.Level + 1,
@@ -385,7 +395,7 @@ func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
 		ui.collapseModule(item)
 		return ui.updateViews(g)
 	}
-	
+
 	// If not on a module, try to collapse parent module
 	for i := ui.currentIndex - 1; i >= 0; i-- {
 		if ui.items[i].IsModule && ui.items[i].IsExpanded && ui.items[i].Level < item.Level {
@@ -393,6 +403,6 @@ func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
 			return ui.updateViews(g)
 		}
 	}
-	
+
 	return nil
 }
