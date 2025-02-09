@@ -12,20 +12,36 @@ builds:
     goarch:
       - amd64
       - arm64
+      - arm
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: windows
+        goarch: arm
+      - goos: darwin
+        goarch: arm
     ldflags:
       - -s -w -X main.Version={{.Version}}
     binary: tf-state-move
 
-archives:
-  - format: tar.gz
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else }}{{ .Arch }}{{ end }}
-    format_overrides:
-      - goos: windows
-        format: zip
+release:
+  # Customize the release
+  header: |
+    ## tf-state-move {{ .Version }}
+
+    ### Binaries:
+    - Linux: 
+      - AMD64: `tf-state-move-linux-amd64`
+      - ARM64: `tf-state-move-linux-arm64`
+      - ARMv6: `tf-state-move-linux-arm-6`
+      - ARMv7: `tf-state-move-linux-arm-7`
+    - macOS:
+      - AMD64: `tf-state-move-darwin-amd64`
+      - ARM64: `tf-state-move-darwin-arm64` (Apple Silicon)
+    - Windows:
+      - AMD64: `tf-state-move-windows-amd64.exe`
+      - ARM64: `tf-state-move-windows-arm64.exe`
 
 checksum:
   name_template: "checksums.txt"
