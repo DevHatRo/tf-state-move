@@ -8,6 +8,7 @@ on:
       - 'v*'
 
 jobs:
+  # Version bump job - only runs on main branch
   version:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -27,6 +28,7 @@ jobs:
           DEFAULT_BUMP: patch
           RELEASE_BRANCHES: main
 
+  # Release job - runs on both main (after version bump) and on tag pushes
   goreleaser:
     needs: [version]
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
@@ -51,9 +53,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.GH_PAT }}
-          HOMEBREW_BUMP_TAG: ${{ needs.version.outputs.new_version }}
+          # Use either the bumped version or the existing tag
+          HOMEBREW_BUMP_TAG: ${{ needs.version.outputs.new_version || github.ref_name }}
 
+  # Homebrew job - only runs on tag pushes
   homebrew:
+    if: startsWith(github.ref, 'refs/tags/v')
     needs: [goreleaser]
     runs-on: ubuntu-latest
     steps:
@@ -63,5 +68,6 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
+          tag: ${{ github.ref_name }}
           revision: ${{ github.sha }}
           force: true 
