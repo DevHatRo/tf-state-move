@@ -189,7 +189,9 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 		}
 
 		line := fmt.Sprintf("%s %s %s", prefix, selected, item.Display)
-		fmt.Fprintln(v, line)
+		if _, err := fmt.Fprintln(v, line); err != nil {
+			return fmt.Errorf("failed to write line: %w", err)
+		}
 	}
 
 	// Set cursor relative to origin
@@ -219,11 +221,15 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	sort.Strings(selectedResources)
 
 	// Show count
-	fmt.Fprintf(v, "Selected: %d resource(s)\n\n", selectedCount)
+	if _, err := fmt.Fprintf(v, "Selected: %d resource(s)\n\n", selectedCount); err != nil {
+		return fmt.Errorf("failed to write count: %w", err)
+	}
 
-	// Show selected resources with their full paths including indices
+	// Show selected resources
 	for _, resource := range selectedResources {
-		fmt.Fprintf(v, "• %s\n", resource)
+		if _, err := fmt.Fprintf(v, "• %s\n", resource); err != nil {
+			return fmt.Errorf("failed to write resource: %w", err)
+		}
 	}
 
 	return nil
@@ -395,29 +401,5 @@ func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
 		}
 	}
 
-	return nil
-}
-
-func (ui *UI) getInput() error {
-	var input string
-	_, err := fmt.Scanln(&input)
-	if err != nil && err != io.EOF {
-		return fmt.Errorf("error reading input: %w", err)
-	}
-	return nil
-}
-
-func (ui *UI) printMessage(v *gocui.View, msg string) error {
-	_, err := fmt.Fprintln(v, msg)
-	if err != nil {
-		return fmt.Errorf("error printing message: %w", err)
-	}
-	return nil
-}
-
-func (ui *UI) moveCursor(v *gocui.View) error {
-	if err := v.SetCursor(0, ui.currentIndex); err != nil {
-		return fmt.Errorf("error setting cursor: %w", err)
-	}
 	return nil
 }

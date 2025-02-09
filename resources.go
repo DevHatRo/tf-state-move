@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -86,10 +87,7 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 		sort.Strings(resources)
 
 		// Remove "module." prefix for ModuleName
-		moduleName := module
-		if strings.HasPrefix(moduleName, "module.") {
-			moduleName = strings.TrimPrefix(moduleName, "module.")
-		}
+		moduleName := strings.TrimPrefix(module, "module.")
 
 		choices = append(choices, SelectionItem{
 			Display:    module,

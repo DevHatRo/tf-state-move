@@ -14,9 +14,7 @@ var Version = "dev"
 // Add debug flag
 var debug bool
 
-var (
-	version string
-)
+var version string // Used by goreleaser
 
 func main() {
 	var (
@@ -48,7 +46,7 @@ func main() {
 	}
 
 	if showVersion {
-		fmt.Printf("tf-state-move version %s\n", Version)
+		fmt.Printf("tf-state-move version %s\n", version)
 		return
 	}
 

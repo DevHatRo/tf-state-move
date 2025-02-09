@@ -71,11 +71,3 @@ func moveResources(selectedResources []string, inStatePath, outStatePath string,
 
 	return nil
 }
-
-func cleanResourceName(name string) string {
-	return strings.TrimPrefix(name, "module.")
-}
-
-func formatError(err error) string {
-	return err.Error()
-}
