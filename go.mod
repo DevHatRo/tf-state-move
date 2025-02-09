@@ -1,6 +1,6 @@
-module terraform-state-mover
+module github.com/devhat/tf-state-move
 
-go 1.20
+go 1.21
 
 require github.com/jroimartin/gocui v0.5.0
 
