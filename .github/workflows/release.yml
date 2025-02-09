@@ -80,7 +80,7 @@ jobs:
           if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             VERSION=${GITHUB_REF#refs/tags/}
           else
-            VERSION=${{ needs.auto-tag.outputs.new_version }}
+            VERSION=${{ steps.bump_version.outputs.new_version }}
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
@@ -90,6 +90,6 @@ jobs:
           token: ${{ secrets.GH_PAT }}
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
-          tag: ${{ steps.get_version.outputs.VERSION }}
+          tag: ${{ steps.bump_version.outputs.new_version }}
           revision: ${{ github.sha }}
           force: true 
