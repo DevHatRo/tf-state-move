@@ -17,9 +17,9 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 
 		// Handle data sources
 		if r.Mode == "data" {
-			resourceStr = fmt.Sprintf("data.%s.%s", r.Type, r.Name)
+			resourceStr = "data." + r.Type + "." + r.Name
 		} else {
-			resourceStr = fmt.Sprintf("%s.%s", r.Type, r.Name)
+			resourceStr = r.Type + "." + r.Name
 		}
 
 		// Handle instances array first
