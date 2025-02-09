@@ -89,7 +89,6 @@ func main() {
 	for value, selected := range ui.selectedItems {
 		if selected {
 			// Skip the module itself but keep its resources
-			// Skip entries like "module.module.acm["testnet"]" but keep "module.module.acm["testnet"].aws_acm_certificate.this"
 			if strings.HasPrefix(value, "module.") && !strings.Contains(value, ".aws_") {
 				continue // Skip module entries that don't contain a resource
 			}

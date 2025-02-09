@@ -194,7 +194,11 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 	}
 
 	// Set cursor relative to origin
-	v.SetCursor(0, ui.currentIndex-ui.origin)
+	if err := v.SetCursor(0, ui.currentIndex-ui.origin); err != nil {
+		if err != gocui.ErrUnknownView {
+			return fmt.Errorf("failed to set cursor: %w", err)
+		}
+	}
 	return nil
 }
 

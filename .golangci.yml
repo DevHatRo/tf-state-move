@@ -13,10 +13,17 @@ linters-settings:
     check-type-assertions: true
     check-blank: true
 
-run:
-  deadline: 5m
+  govet:
+    check-shadowing: true
+
+  staticcheck:
+    go: "1.21"
 
 issues:
   exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0
+
+run:
+  deadline: 5m
+  tests: false

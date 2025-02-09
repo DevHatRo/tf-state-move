@@ -21,7 +21,10 @@ func getFilePath(flagValue, promptText, defaultPath string) (string, error) {
 	fmt.Printf("%s [%s]: ", promptText, defaultPath)
 	var input string
 	_, err := fmt.Scanln(&input)
-	if err != nil && err != io.EOF {
+	if err != nil {
+		if err == io.EOF {
+			return defaultPath, nil
+		}
 		return "", fmt.Errorf("error reading input: %w", err)
 	}
 	if input == "" {
