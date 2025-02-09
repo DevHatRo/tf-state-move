@@ -77,10 +77,13 @@ changelog:
 
 brews:
   - name: tf-state-move
-    repository:
+    tap:
       owner: DevHatRo
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    commit_author:
+      name: goreleaserbot
+      email: bot@goreleaser.com
     homepage: "https://github.com/DevHatRo/tf-state-move"
     description: "A tool to move resources between Terraform state files"
     license: "MIT"
