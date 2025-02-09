@@ -5,17 +5,23 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+  packages: write
+  issues: write
+  pull-requests: write
+
 jobs:
   goreleaser:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Set up Go
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
           go-version: '1.21'
 
@@ -42,6 +48,6 @@ jobs:
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           tap: devhat/homebrew-tap
-          formula: tf-state-mover
+          formula: tf-state-move
           tag: ${{ github.ref_name }}
           revision: ${{ github.sha }} 
