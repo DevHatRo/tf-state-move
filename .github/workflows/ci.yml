@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: ubuntu-latest
+            artifact_name: tf-state-mover-linux-amd64
+            asset_name: tf-state-mover-linux-amd64
+          - os: windows-latest
+            artifact_name: tf-state-mover-windows-amd64.exe
+            asset_name: tf-state-mover-windows-amd64.exe
+          - os: macos-latest
+            artifact_name: tf-state-mover-darwin-amd64
+            asset_name: tf-state-mover-darwin-amd64
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.21'
+
+    - name: Build
+      run: |
+        go mod init terraform-state-mover
+        go mod tidy
+        go build -v -o ${{ matrix.artifact_name }}
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.asset_name }}
+        path: ${{ matrix.artifact_name }} 
