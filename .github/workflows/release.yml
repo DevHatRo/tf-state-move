@@ -34,6 +34,11 @@ jobs:
     needs: [goreleaser]
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v4
         with:
@@ -42,4 +47,8 @@ jobs:
           formula: tf-state-move
           tag: ${{ github.ref_name }}
           revision: ${{ github.sha }}
-          force: true 
+          force: true
+          message: |
+            Automated release of tf-state-move ${{ github.ref_name }}
+            
+            Created by GitHub Actions
