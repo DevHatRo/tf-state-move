@@ -15,14 +15,14 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
         include:
           - os: ubuntu-latest
-            artifact_name: tf-state-mover-linux-amd64
-            asset_name: tf-state-mover-linux-amd64
+            artifact_name: tf-state-move-linux-amd64
+            asset_name: tf-state-move-linux-amd64
           - os: windows-latest
-            artifact_name: tf-state-mover-windows-amd64.exe
-            asset_name: tf-state-mover-windows-amd64.exe
+            artifact_name: tf-state-move-windows-amd64.exe
+            asset_name: tf-state-move-windows-amd64.exe
           - os: macos-latest
-            artifact_name: tf-state-mover-darwin-amd64
-            asset_name: tf-state-mover-darwin-amd64
+            artifact_name: tf-state-move-darwin-amd64
+            asset_name: tf-state-move-darwin-amd64
 
     steps:
     - uses: actions/checkout@v3
@@ -34,7 +34,6 @@ jobs:
 
     - name: Build
       run: |
-        go mod init terraform-state-mover
         go mod tidy
         go build -v -o ${{ matrix.artifact_name }}
 
