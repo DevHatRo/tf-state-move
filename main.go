@@ -14,6 +14,10 @@ var Version = "dev"
 // Add debug flag
 var debug bool
 
+var (
+	version string
+)
+
 func main() {
 	var (
 		showHelp    bool

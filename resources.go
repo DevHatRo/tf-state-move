@@ -1,110 +1,110 @@
 package main
 
 import (
-    "fmt"
-    "sort"
-    "strings"
+	"fmt"
+	"sort"
+	"strings"
 )
 
 func getResourceChoices(resources []Resource) []SelectionItem {
-    moduleMap := make(map[string][]string)
-    var choices []SelectionItem
+	moduleMap := make(map[string][]string)
+	var choices []SelectionItem
 
-    // First, collect modules and their resources
-    for _, r := range resources {
-        // Build base resource string
-        var resourceStr string
-        
-        // Handle data sources
-        if r.Mode == "data" {
-            resourceStr = fmt.Sprintf("data.%s.%s", r.Type, r.Name)
-        } else {
-            resourceStr = fmt.Sprintf("%s.%s", r.Type, r.Name)
-        }
+	// First, collect modules and their resources
+	for _, r := range resources {
+		// Build base resource string
+		var resourceStr string
 
-        // Handle instances array first
-        if len(r.Instances) > 0 {
-            for _, inst := range r.Instances {
-                instanceStr := resourceStr
+		// Handle data sources
+		if r.Mode == "data" {
+			resourceStr = fmt.Sprintf("data.%s.%s", r.Type, r.Name)
+		} else {
+			resourceStr = fmt.Sprintf("%s.%s", r.Type, r.Name)
+		}
 
-                // Check for index_key first
-                if inst.IndexKey != nil {
-                    switch idx := inst.IndexKey.(type) {
-                    case float64:
-                        instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
-                    case string:
-                        instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
-                    }
-                } else if inst.Index != nil {
-                    switch idx := inst.Index.(type) {
-                    case float64:
-                        instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
-                    case string:
-                        instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
-                    case map[string]interface{}:
-                        if v, ok := idx["value"].(string); ok {
-                            instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, v)
-                        }
-                    }
-                }
+		// Handle instances array first
+		if len(r.Instances) > 0 {
+			for _, inst := range r.Instances {
+				instanceStr := resourceStr
 
-                if r.Module != "" {
-                    modulePath := formatModulePath(r.Module)
-                    moduleMap[modulePath] = append(moduleMap[modulePath], instanceStr)
-                } else {
-                    choices = append(choices, SelectionItem{
-                        Display:  instanceStr,
-                        Value:    instanceStr,
-                        IsModule: false,
-                    })
-                }
-            }
-        } else {
-            if r.Module != "" {
-                modulePath := formatModulePath(r.Module)
-                moduleMap[modulePath] = append(moduleMap[modulePath], resourceStr)
-            } else {
-                choices = append(choices, SelectionItem{
-                    Display:  resourceStr,
-                    Value:    resourceStr,
-                    IsModule: false,
-                })
-            }
-        }
-    }
+				// Check for index_key first
+				if inst.IndexKey != nil {
+					switch idx := inst.IndexKey.(type) {
+					case float64:
+						instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
+					case string:
+						instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
+					}
+				} else if inst.Index != nil {
+					switch idx := inst.Index.(type) {
+					case float64:
+						instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
+					case string:
+						instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
+					case map[string]interface{}:
+						if v, ok := idx["value"].(string); ok {
+							instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, v)
+						}
+					}
+				}
 
-    // Then create module entries
-    var modules []string
-    for module := range moduleMap {
-        modules = append(modules, module)
-    }
-    sort.Strings(modules)
+				if r.Module != "" {
+					modulePath := formatModulePath(r.Module)
+					moduleMap[modulePath] = append(moduleMap[modulePath], instanceStr)
+				} else {
+					choices = append(choices, SelectionItem{
+						Display:  instanceStr,
+						Value:    instanceStr,
+						IsModule: false,
+					})
+				}
+			}
+		} else {
+			if r.Module != "" {
+				modulePath := formatModulePath(r.Module)
+				moduleMap[modulePath] = append(moduleMap[modulePath], resourceStr)
+			} else {
+				choices = append(choices, SelectionItem{
+					Display:  resourceStr,
+					Value:    resourceStr,
+					IsModule: false,
+				})
+			}
+		}
+	}
 
-    // Add module entries with their resources
-    for _, module := range modules {
-        resources := moduleMap[module]
-        sort.Strings(resources)
-        
-        // Remove "module." prefix for ModuleName
-        moduleName := module
-        if strings.HasPrefix(moduleName, "module.") {
-            moduleName = strings.TrimPrefix(moduleName, "module.")
-        }
-        
-        choices = append(choices, SelectionItem{
-            Display:    module,
-            Value:      module,
-            IsModule:   true,
-            ModuleName: moduleName,
-            Resources:  resources,
-            Level:      0,
-        })
-    }
+	// Then create module entries
+	var modules []string
+	for module := range moduleMap {
+		modules = append(modules, module)
+	}
+	sort.Strings(modules)
 
-    // Sort non-module entries
-    sort.Slice(choices, func(i, j int) bool {
-        return choices[i].Display < choices[j].Display
-    })
+	// Add module entries with their resources
+	for _, module := range modules {
+		resources := moduleMap[module]
+		sort.Strings(resources)
 
-    return choices
+		// Remove "module." prefix for ModuleName
+		moduleName := module
+		if strings.HasPrefix(moduleName, "module.") {
+			moduleName = strings.TrimPrefix(moduleName, "module.")
+		}
+
+		choices = append(choices, SelectionItem{
+			Display:    module,
+			Value:      module,
+			IsModule:   true,
+			ModuleName: moduleName,
+			Resources:  resources,
+			Level:      0,
+		})
+	}
+
+	// Sort non-module entries
+	sort.Slice(choices, func(i, j int) bool {
+		return choices[i].Display < choices[j].Display
+	})
+
+	return choices
 }

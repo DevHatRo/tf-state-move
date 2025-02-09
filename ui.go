@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"github.com/jroimartin/gocui"
+	"io"
 	"sort"
 	"strings"
 )
@@ -16,7 +17,7 @@ type UI struct {
 	items         []SelectionItem
 	selectedItems map[string]bool
 	currentIndex  int
-	origin        int        // Add this field to track scroll position
+	origin        int // Add this field to track scroll position
 	gui           *gocui.Gui
 	inStatePath   string
 	outStatePath  string
@@ -27,7 +28,7 @@ func newUI(choices []SelectionItem, inPath, outPath string) *UI {
 		items:         choices,
 		selectedItems: make(map[string]bool),
 		currentIndex:  0,
-		origin:       0,
+		origin:        0,
 		inStatePath:   inPath,
 		outStatePath:  outPath,
 	}
@@ -56,7 +57,7 @@ func (ui *UI) run() error {
 
 func (ui *UI) layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
-	
+
 	// Main view (left panel)
 	if v, err := g.SetView(mainView, 0, 0, maxX/2-1, maxY-1); err != nil {
 		if err != gocui.ErrUnknownView {
@@ -293,14 +294,14 @@ func (ui *UI) expandModule(item *SelectionItem) {
 
 	// Create new items for module resources
 	newItems := make([]SelectionItem, 0, len(item.Resources))
-	
+
 	for _, resource := range item.Resources {
 		// The resource string already includes indices from resources.go
 		fullPath := fmt.Sprintf("module.%s.%s", item.ModuleName, resource)
-		
+
 		newItems = append(newItems, SelectionItem{
-			Display:    resource,     // Show just the resource part (which includes indices)
-			Value:      fullPath,     // Keep full path for selection/state operations
+			Display:    resource, // Show just the resource part (which includes indices)
+			Value:      fullPath, // Keep full path for selection/state operations
 			IsModule:   false,
 			ModuleName: item.ModuleName,
 			Level:      item.Level + 1,
@@ -385,7 +386,7 @@ func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
 		ui.collapseModule(item)
 		return ui.updateViews(g)
 	}
-	
+
 	// If not on a module, try to collapse parent module
 	for i := ui.currentIndex - 1; i >= 0; i-- {
 		if ui.items[i].IsModule && ui.items[i].IsExpanded && ui.items[i].Level < item.Level {
@@ -393,6 +394,30 @@ func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
 			return ui.updateViews(g)
 		}
 	}
-	
+
+	return nil
+}
+
+func (ui *UI) getInput() error {
+	var input string
+	_, err := fmt.Scanln(&input)
+	if err != nil && err != io.EOF {
+		return fmt.Errorf("error reading input: %w", err)
+	}
+	return nil
+}
+
+func (ui *UI) printMessage(v *gocui.View, msg string) error {
+	_, err := fmt.Fprintln(v, msg)
+	if err != nil {
+		return fmt.Errorf("error printing message: %w", err)
+	}
+	return nil
+}
+
+func (ui *UI) moveCursor(v *gocui.View) error {
+	if err := v.SetCursor(0, ui.currentIndex); err != nil {
+		return fmt.Errorf("error setting cursor: %w", err)
+	}
 	return nil
 }

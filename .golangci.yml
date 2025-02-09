@@ -1,15 +1,22 @@
 linters:
   enable:
     - gofmt
-    - golint
     - govet
     - errcheck
     - staticcheck
     - gosimple
     - ineffassign
+    - unused
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
 
 run:
   deadline: 5m
 
 issues:
   exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
