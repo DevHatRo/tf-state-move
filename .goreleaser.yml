@@ -80,7 +80,7 @@ brews:
     repository:
       owner: DevHatRo
       name: homebrew-tap
-      token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
     homepage: "https://github.com/DevHatRo/tf-state-move"
     description: "A tool to move resources between Terraform state files"
     license: "MIT"
