@@ -7,7 +7,6 @@ linters:
     - gosimple
     - ineffassign
     - unused
-    - shadow
 
 linters-settings:
   errcheck:
@@ -16,15 +15,8 @@ linters-settings:
     ignore: fmt:.*,write,Close
 
   govet:
-    check-shadowing: true
-
-  staticcheck:
-    go: "1.21"
-
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+    enable:
+      - shadow
 
 run:
   go: "1.21"
@@ -32,3 +24,8 @@ run:
   tests: false
   skip-files: []
   skip-dirs: []
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
