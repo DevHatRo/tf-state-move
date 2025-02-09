@@ -83,7 +83,6 @@ jobs:
             VERSION=${{ needs.auto-tag.outputs.new_version }}
           fi
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
-          echo "URL=https://github.com/DevHatRo/tf-state-move/archive/${VERSION}.tar.gz" >> $GITHUB_OUTPUT
 
       - name: Update Homebrew formula
         uses: dawidd6/action-homebrew-bump-formula@v3
@@ -93,4 +92,4 @@ jobs:
           formula: tf-state-move
           tag: ${{ steps.get_version.outputs.VERSION }}
           revision: ${{ github.sha }}
-          url: ${{ steps.get_version.outputs.URL }} 
+          force: true 
