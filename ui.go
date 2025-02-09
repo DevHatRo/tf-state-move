@@ -76,7 +76,7 @@ func (ui *UI) layout(g *gocui.Gui) error {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
-		v.Title = fmt.Sprintf("Selected Resources (PgUp/PgDn: scroll, Home/End: jump)")
+		v.Title = "Selected Resources (PgUp/PgDn: scroll, Home/End: jump)"
 		v.Wrap = true
 	}
 
@@ -187,7 +187,7 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 			selected = "[ ]"
 		}
 
-		line := fmt.Sprintf("%s %s %s", prefix, selected, item.Display)
+		line := prefix + " " + selected + " " + item.Display
 		if _, err := fmt.Fprintln(v, line); err != nil {
 			return fmt.Errorf("failed to write line: %w", err)
 		}
@@ -265,7 +265,7 @@ func (ui *UI) toggleSelection(g *gocui.Gui, v *gocui.View) error {
 	if item.IsModule {
 		// Use the exact resource paths with indices
 		for _, resource := range item.Resources {
-			fullPath := fmt.Sprintf("module.%s.%s", item.ModuleName, resource)
+			fullPath := "module." + item.ModuleName + "." + resource
 			ui.selectedItems[fullPath] = item.IsSelected
 		}
 
@@ -306,7 +306,7 @@ func (ui *UI) expandModule(item *SelectionItem) {
 
 	for _, resource := range item.Resources {
 		// The resource string already includes indices from resources.go
-		fullPath := fmt.Sprintf("module.%s.%s", item.ModuleName, resource)
+		fullPath := "module." + item.ModuleName + "." + resource
 
 		newItems = append(newItems, SelectionItem{
 			Display:    resource, // Show just the resource part (which includes indices)
