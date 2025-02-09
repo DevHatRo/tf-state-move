@@ -11,16 +11,10 @@ import (
 // Version will be set during build
 var Version = "dev"
 
-// Add debug flag
-var debug bool
-
-var version string // Used by goreleaser
-
 func main() {
 	var (
 		showHelp    bool
 		showVersion bool
-		debug       bool
 	)
 
 	// Define flags
@@ -28,7 +22,6 @@ func main() {
 	flag.BoolVar(&showHelp, "help", false, "Show help message")
 	flag.BoolVar(&showVersion, "v", false, "Show version information")
 	flag.BoolVar(&showVersion, "version", false, "Show version information")
-	flag.BoolVar(&debug, "debug", false, "Enable debug output")
 
 	var inStatePath string
 	var outStatePath string
@@ -46,7 +39,7 @@ func main() {
 	}
 
 	if showVersion {
-		fmt.Printf("tf-state-move version %s\n", version)
+		fmt.Printf("tf-state-move version %s\n", Version)
 		return
 	}
 
@@ -120,7 +113,7 @@ func main() {
 
 	// Move resources
 	fmt.Println("\nMoving selected resources...")
-	if err := moveResources(selectedResources, inStatePath, outStatePath, debug); err != nil {
+	if err := moveResources(selectedResources, inStatePath, outStatePath, false); err != nil {
 		fmt.Printf("Error moving resources: %v\n", err)
 		os.Exit(1)
 	}

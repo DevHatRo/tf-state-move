@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -31,19 +32,19 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 				if inst.IndexKey != nil {
 					switch idx := inst.IndexKey.(type) {
 					case float64:
-						instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
+						instanceStr = resourceStr + "[" + strconv.Itoa(int(idx)) + "]"
 					case string:
-						instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
+						instanceStr = resourceStr + "[\"" + idx + "\"]"
 					}
 				} else if inst.Index != nil {
 					switch idx := inst.Index.(type) {
 					case float64:
-						instanceStr = fmt.Sprintf("%s[%d]", resourceStr, int(idx))
+						instanceStr = resourceStr + "[" + strconv.Itoa(int(idx)) + "]"
 					case string:
-						instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, idx)
+						instanceStr = resourceStr + "[\"" + idx + "\"]"
 					case map[string]interface{}:
 						if v, ok := idx["value"].(string); ok {
-							instanceStr = fmt.Sprintf("%s[\"%s\"]", resourceStr, v)
+							instanceStr = resourceStr + "[\"" + v + "\"]"
 						}
 					}
 				}
