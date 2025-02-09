@@ -25,6 +25,22 @@ builds:
       - -s -w -X main.Version={{.Version}}
     binary: tf-state-move
 
+archives:
+  - format: tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+      {{- if .Arm }}v{{ .Arm }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+
 release:
   # Customize the release
   header: |
@@ -64,6 +80,7 @@ brews:
     repository:
       owner: DevHatRo
       name: homebrew-tap
+      token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     homepage: "https://github.com/DevHatRo/tf-state-move"
     description: "A tool to move resources between Terraform state files"
     license: "MIT"
