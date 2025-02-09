@@ -1,4 +1,4 @@
-module github.com/devhat/tf-state-move
+module github.com/DevHatRo/tf-state-move
 
 go 1.21
 

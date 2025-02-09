@@ -45,7 +45,7 @@ jobs:
         uses: dawidd6/action-homebrew-bump-formula@v3
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          tap: devhat/homebrew-tap
+          tap: DevHatRo/homebrew-tap
           formula: tf-state-move
           tag: ${{ github.ref_name }}
           revision: ${{ github.sha }} 

@@ -12,7 +12,7 @@ Terraform State Move is a Go-based CLI tool designed to help you organize and ma
 ## Installation
 
 ```bash
-go install github.com/username/tf-state-move@latest
+go install github.com/DevHatRo/tf-state-move@latest
 ```
 
 ## Getting Started

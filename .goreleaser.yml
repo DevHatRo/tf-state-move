@@ -46,9 +46,9 @@ changelog:
 brews:
   - name: tf-state-move
     repository:
-      owner: devhat
+      owner: DevHatRo
       name: homebrew-tap
-    homepage: "https://github.com/devhat/tf-state-move"
+    homepage: "https://github.com/DevHatRo/tf-state-move"
     description: "A tool to move resources between Terraform state files"
     license: "MIT"
     test: |
