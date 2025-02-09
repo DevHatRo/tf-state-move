@@ -69,6 +69,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_PAT }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.GH_PAT }}
+          HOMEBREW_BUMP_TAG: ${{ needs.auto-tag.outputs.new_version }}
 
   homebrew:
     needs: [goreleaser]
@@ -79,6 +80,5 @@ jobs:
         with:
           tap: DevHatRo/homebrew-tap
           formula: tf-state-move
-          tag: ${{ needs.auto-tag.outputs.new_version }}
           revision: ${{ github.sha }}
           force: true 
