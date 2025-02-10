@@ -211,8 +211,8 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	v.Clear()
 
 	// Count selected resources (excluding grouping items)
-	var selectedCount int
-	var selectedResources []string
+	selectedCount := 0
+	selectedResources := make([]string, 0)
 
 	for value, selected := range ui.selectedItems {
 		if selected {
