@@ -27,4 +27,5 @@ type SelectionItem struct {
 	Resources  []string
 	IsSelected bool
 	Level      int
+	IsGrouping bool
 }

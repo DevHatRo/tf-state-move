@@ -81,8 +81,8 @@ func main() {
 	var selectedResources []string
 	for value, selected := range ui.selectedItems {
 		if selected {
-			// Skip the module itself but keep its resources
-			if strings.HasPrefix(value, "module.") && !strings.Contains(value, ".aws_") {
+			// Skip module entries that are just for grouping
+			if strings.HasPrefix(value, "module.") && !strings.Contains(value, ".aws_") && !strings.Contains(value, ".data.") {
 				continue // Skip module entries that don't contain a resource
 			}
 			selectedResources = append(selectedResources, value)

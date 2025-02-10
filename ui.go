@@ -2,9 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/jroimartin/gocui"
 	"sort"
 	"strings"
+
+	"github.com/jroimartin/gocui"
 )
 
 const (
@@ -209,13 +210,23 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	}
 	v.Clear()
 
-	// Count selected resources
-	var selectedCount int
-	var selectedResources []string
+	// Count selected resources (excluding grouping items)
+	selectedCount := 0
+	selectedResources := make([]string, 0)
 
 	for value, selected := range ui.selectedItems {
 		if selected {
-			selectedCount++
+			// Find the corresponding item to check if it's a grouping
+			isGrouping := false
+			for _, item := range ui.items {
+				if item.Value == value && item.IsGrouping {
+					isGrouping = true
+					break
+				}
+			}
+			if !isGrouping {
+				selectedCount++
+			}
 			selectedResources = append(selectedResources, value)
 		}
 	}
@@ -228,9 +239,19 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 		return fmt.Errorf("failed to write count: %w", err)
 	}
 
-	// Show selected resources
+	// Show selected resources with proper indentation
 	for _, resource := range selectedResources {
-		if _, err := fmt.Fprintf(v, "• %s\n", resource); err != nil {
+		// Find the corresponding item to get its level
+		level := 0
+		for _, item := range ui.items {
+			if item.Value == resource {
+				level = item.Level
+				break
+			}
+		}
+
+		indent := strings.Repeat("    ", level)
+		if _, err := fmt.Fprintf(v, "%s• %s\n", indent, resource); err != nil {
 			return fmt.Errorf("failed to write resource: %w", err)
 		}
 	}
@@ -265,7 +286,7 @@ func (ui *UI) toggleSelection(g *gocui.Gui, v *gocui.View) error {
 	if item.IsModule {
 		// Use the exact resource paths with indices
 		for _, resource := range item.Resources {
-			fullPath := "module." + item.ModuleName + "." + resource
+			fullPath := item.Value + "." + resource
 			ui.selectedItems[fullPath] = item.IsSelected
 		}
 
