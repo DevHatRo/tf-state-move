@@ -140,8 +140,7 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 	}
 
 	// Add module entries in hierarchical order
-	var addModules func(parentPath string, level int, parentExpanded bool)
-	addModules = func(parentPath string, level int, parentExpanded bool) {
+	addModules := func(parentPath string, level int, parentExpanded bool) {
 		if modules, ok := moduleHierarchy[parentPath]; ok {
 			// Sort modules at the current level
 			sort.Slice(modules, func(i, j int) bool {
