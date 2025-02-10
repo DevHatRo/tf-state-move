@@ -242,7 +242,7 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	// Show selected resources with proper indentation
 	for _, resource := range selectedResources {
 		// Find the corresponding item to get its level
-		var level int
+		level := 0
 		for _, item := range ui.items {
 			if item.Value == resource {
 				level = item.Level
