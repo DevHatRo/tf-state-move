@@ -15,13 +15,9 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 	// First, collect modules and their resources
 	for _, r := range resources {
 		// Build base resource string
-		var resourceStr string
-
-		// Handle data sources
+		resourceStr := r.Type + "." + r.Name
 		if r.Mode == "data" {
-			resourceStr = "data." + r.Type + "." + r.Name
-		} else {
-			resourceStr = r.Type + "." + r.Name
+			resourceStr = "data." + resourceStr
 		}
 
 		// Handle instances array first
