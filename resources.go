@@ -9,7 +9,8 @@ import (
 
 func getResourceChoices(resources []Resource) []SelectionItem {
 	moduleMap := make(map[string][]string)
-	var choices []SelectionItem
+	choices := make([]SelectionItem, 0)
+	modules := make([]string, 0)
 
 	// First, collect modules and their resources
 	for _, r := range resources {
@@ -75,7 +76,6 @@ func getResourceChoices(resources []Resource) []SelectionItem {
 	}
 
 	// Then create module entries
-	var modules []string
 	for module := range moduleMap {
 		modules = append(modules, module)
 	}
