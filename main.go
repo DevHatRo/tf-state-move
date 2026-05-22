@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 )
 
@@ -67,35 +66,23 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Get choices with tree structure
-	choices := getResourceChoices(state.Resources)
+	// Build the module/resource tree
+	tree := buildResourceTree(state.Resources)
 
 	// Create and run UI
-	ui := newUI(choices, inStatePath, outStatePath)
+	ui := newUI(tree, inStatePath, outStatePath)
 	if err := ui.run(); err != nil {
 		fmt.Printf("Error running UI: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Get selected resources
-	var selectedResources []string
-	for value, selected := range ui.selectedItems {
-		if selected {
-			// Skip module entries that are just for grouping
-			if strings.HasPrefix(value, "module.") && !strings.Contains(value, ".aws_") && !strings.Contains(value, ".data.") {
-				continue // Skip module entries that don't contain a resource
-			}
-			selectedResources = append(selectedResources, value)
-		}
-	}
+	selectedResources := selectedResourcePaths(ui.selectedItems)
 
 	if len(selectedResources) == 0 {
 		fmt.Println("No resources selected. Exiting.")
 		return
 	}
-
-	// Sort resources for consistent display
-	sort.Strings(selectedResources)
 
 	// Show selected resources and confirm
 	fmt.Println("\nSelected Resources:")

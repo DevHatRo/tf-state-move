@@ -1,31 +1,37 @@
-linters:
-  enable:
-    - gofmt
-    - govet
-    - errcheck
-    - staticcheck
-    - gosimple
-    - ineffassign
-    - unused
-
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: true
-    ignore: fmt:.*,write,Close
-
-  govet:
-    enable:
-      - shadow
+version: "2"
 
 run:
-  go: "1.21"
-  deadline: 5m
-  tests: false
-  skip-files: []
-  skip-dirs: []
+  timeout: 5m
 
-issues:
-  exclude-use-default: false
-  max-issues-per-linter: 0
-  max-same-issues: 0
+linters:
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+      exclude-functions:
+        - fmt.Print
+        - fmt.Printf
+        - fmt.Println
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+        - fmt.Scan
+        - fmt.Scanln
+    govet:
+      enable:
+        - shadow
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
+
+formatters:
+  enable:
+    - gofmt
