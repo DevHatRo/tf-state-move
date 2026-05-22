@@ -1,181 +1,175 @@
 package main
 
 import (
-	"fmt"
 	"sort"
 	"strconv"
 	"strings"
 )
 
-func getResourceChoices(resources []Resource) []SelectionItem {
-	moduleMap := make(map[string][]string)
-	choices := make([]SelectionItem, 0)
-	modules := make([]string, 0)
+// buildResourceTree turns the flat list of state resources into a tree of
+// module groups and resource leaves. Modules nest to any depth, so a resource
+// at "module.app.module.db" becomes a leaf under a "module.db" node that is
+// itself a child of "module.app".
+func buildResourceTree(resources []Resource) []*treeNode {
+	root := &treeNode{isModule: true, expanded: true}
 
-	// First, collect modules and their resources
 	for _, r := range resources {
-		// Build base resource string
-		resourceStr := r.Type + "." + r.Name
-		if r.Mode == "data" {
-			resourceStr = "data." + resourceStr
-		}
-
-		// Handle instances array first
-		if len(r.Instances) > 0 {
-			for _, inst := range r.Instances {
-				instanceStr := resourceStr
-
-				// Check for index_key first
-				if inst.IndexKey != nil {
-					switch idx := inst.IndexKey.(type) {
-					case float64:
-						instanceStr = resourceStr + "[" + strconv.Itoa(int(idx)) + "]"
-					case string:
-						instanceStr = resourceStr + "[\"" + idx + "\"]"
-					}
-				} else if inst.Index != nil {
-					switch idx := inst.Index.(type) {
-					case float64:
-						instanceStr = resourceStr + "[" + strconv.Itoa(int(idx)) + "]"
-					case string:
-						instanceStr = resourceStr + "[\"" + idx + "\"]"
-					case map[string]interface{}:
-						if v, ok := idx["value"].(string); ok {
-							instanceStr = resourceStr + "[\"" + v + "\"]"
-						}
-					}
-				}
-
-				if r.Module != "" {
-					modulePath := formatModulePath(r.Module)
-					moduleMap[modulePath] = append(moduleMap[modulePath], instanceStr)
-				} else {
-					choices = append(choices, SelectionItem{
-						Display:  instanceStr,
-						Value:    instanceStr,
-						IsModule: false,
-					})
-				}
-			}
-		} else {
-			if r.Module != "" {
-				modulePath := formatModulePath(r.Module)
-				moduleMap[modulePath] = append(moduleMap[modulePath], resourceStr)
+		parent := root
+		cumPath := ""
+		for _, seg := range moduleSegments(r.Module) {
+			if cumPath == "" {
+				cumPath = "module." + seg
 			} else {
-				choices = append(choices, SelectionItem{
-					Display:  resourceStr,
-					Value:    resourceStr,
-					IsModule: false,
-				})
+				cumPath += ".module." + seg
+			}
+			parent = childModule(parent, "module."+seg, cumPath)
+		}
+
+		for _, leaf := range resourceLeafStrings(r) {
+			value := leaf
+			if cumPath != "" {
+				value = cumPath + "." + leaf
+			}
+			parent.children = append(parent.children, &treeNode{label: leaf, value: value})
+		}
+	}
+
+	sortTree(root.children)
+	setLevels(root.children, 0)
+	return root.children
+}
+
+// childModule returns the module child of parent with the given path,
+// creating it if it does not exist yet.
+func childModule(parent *treeNode, label, path string) *treeNode {
+	for _, c := range parent.children {
+		if c.isModule && c.value == path {
+			return c
+		}
+	}
+	child := &treeNode{label: label, value: path, isModule: true}
+	parent.children = append(parent.children, child)
+	return child
+}
+
+// moduleSegments splits a state module path into its successive module names,
+// e.g. "module.app.module.db" -> ["app", "db"]. A root resource yields nil.
+func moduleSegments(module string) []string {
+	module = formatModulePath(module)
+	if module == "" {
+		return nil
+	}
+	return strings.Split(strings.TrimPrefix(module, "module."), ".module.")
+}
+
+// resourceLeafStrings returns the resource-address suffix for each instance of
+// a resource: "aws_instance.web", "aws_instance.web[0]" for a counted
+// resource, or "data.aws_ami.ubuntu" for a data source.
+func resourceLeafStrings(r Resource) []string {
+	base := r.Type + "." + r.Name
+	if r.Mode == "data" {
+		base = "data." + base
+	}
+	if len(r.Instances) == 0 {
+		return []string{base}
+	}
+
+	leaves := make([]string, 0, len(r.Instances))
+	for _, inst := range r.Instances {
+		// A count index is a number; a for_each key is a string.
+		switch idx := inst.IndexKey.(type) {
+		case float64:
+			leaves = append(leaves, base+"["+strconv.Itoa(int(idx))+"]")
+		case string:
+			leaves = append(leaves, base+"[\""+idx+"\"]")
+		default:
+			leaves = append(leaves, base)
+		}
+	}
+	return leaves
+}
+
+// sortTree orders every level of the tree: module groups first, then resource
+// leaves, each group sorted by label.
+func sortTree(nodes []*treeNode) {
+	sort.SliceStable(nodes, func(i, j int) bool {
+		if nodes[i].isModule != nodes[j].isModule {
+			return nodes[i].isModule
+		}
+		return nodes[i].label < nodes[j].label
+	})
+	for _, n := range nodes {
+		sortTree(n.children)
+	}
+}
+
+// setLevels records each node's depth so its row can be indented correctly.
+func setLevels(nodes []*treeNode, level int) {
+	for _, n := range nodes {
+		n.level = level
+		setLevels(n.children, level+1)
+	}
+}
+
+// flattenVisible returns the rows currently visible in the tree, top to
+// bottom. A node is visible when every ancestor module is expanded.
+func flattenVisible(nodes []*treeNode) []*treeNode {
+	var rows []*treeNode
+	var walk func([]*treeNode)
+	walk = func(ns []*treeNode) {
+		for _, n := range ns {
+			rows = append(rows, n)
+			if n.isModule && n.expanded {
+				walk(n.children)
 			}
 		}
 	}
+	walk(nodes)
+	return rows
+}
 
-	// Then create module entries
-	for module := range moduleMap {
-		modules = append(modules, module)
+// leafValues returns the resource addresses of every resource leaf at or
+// below n (n itself when it is a leaf).
+func leafValues(n *treeNode) []string {
+	if !n.isModule {
+		return []string{n.value}
 	}
-	sort.Strings(modules)
+	var values []string
+	for _, c := range n.children {
+		values = append(values, leafValues(c)...)
+	}
+	return values
+}
 
-	// Create a map to store module hierarchies
-	moduleHierarchy := make(map[string][]SelectionItem)
-	processedModules := make(map[string]bool)    // Track processed modules
-	moduleResources := make(map[string][]string) // Track resources for each module
+// resourceCount returns the number of resource leaves under a node.
+func resourceCount(n *treeNode) int {
+	return len(leafValues(n))
+}
 
-	// First pass: collect all resources, including nested module resources
-	for _, module := range modules {
-		resources := moduleMap[module]
-		sort.Strings(resources)
-
-		if strings.Contains(module, ".module.") {
-			// This is a nested module, add its resources to the parent module
-			parts := strings.SplitN(module, ".module.", 2)
-			parentModule := parts[0]
-			nestedPart := parts[1]
-
-			// Add resources with full nested module path
-			for _, resource := range resources {
-				fullResource := "module." + nestedPart + "." + resource
-				if _, exists := moduleResources[parentModule]; !exists {
-					moduleResources[parentModule] = []string{}
-				}
-				moduleResources[parentModule] = append(moduleResources[parentModule], fullResource)
-			}
-		} else {
-			// This is a root module
-			moduleResources[module] = resources
+// nodeSelected reports whether a node should render as selected: a leaf when
+// it is in the selection, a module when every one of its leaves is.
+func nodeSelected(n *treeNode, selected map[string]bool) bool {
+	leaves := leafValues(n)
+	if len(leaves) == 0 {
+		return false
+	}
+	for _, v := range leaves {
+		if !selected[v] {
+			return false
 		}
 	}
+	return true
+}
 
-	// Add module entries
-	for _, module := range modules {
-		if processedModules[module] {
-			continue
-		}
-
-		// Only process root-level modules
-		if strings.Contains(module, ".module.") {
-			continue
-		}
-
-		moduleName := strings.TrimPrefix(module, "module.")
-		baseModule := moduleName
-		if idx := strings.Index(baseModule, "."); idx != -1 {
-			baseModule = baseModule[:idx]
-		}
-
-		// Create the module entry with resource count
-		moduleEntry := SelectionItem{
-			Display:    fmt.Sprintf("%s (%d)", module, len(moduleResources[module])),
-			Value:      module,
-			IsModule:   true,
-			ModuleName: baseModule,
-			Level:      0,
-			IsExpanded: false,
-			Resources:  moduleResources[module],
-		}
-
-		moduleHierarchy["module"] = append(moduleHierarchy["module"], moduleEntry)
-		processedModules[module] = true
-	}
-
-	// Add module entries in hierarchical order
-	addModules := func(parentPath string, level int, parentExpanded bool) {
-		if modules, ok := moduleHierarchy[parentPath]; ok {
-			// Sort modules at the current level
-			sort.Slice(modules, func(i, j int) bool {
-				return modules[i].ModuleName < modules[j].ModuleName
-			})
-
-			for _, module := range modules {
-				if level == 0 || parentExpanded {
-					// Add module with IsGrouping flag set to true
-					moduleChoice := module
-					moduleChoice.IsGrouping = true // Add this field to SelectionItem struct
-					choices = append(choices, moduleChoice)
-
-					// Add resources if module is expanded
-					if module.IsExpanded && len(module.Resources) > 0 {
-						// Sort resources for consistent display
-						resources := module.Resources
-						sort.Strings(resources)
-
-						for _, resource := range resources {
-							choices = append(choices, SelectionItem{
-								Display:  resource,
-								Value:    module.Value + "." + resource,
-								Level:    level + 1,
-								IsModule: false,
-							})
-						}
-					}
-				}
-			}
+// selectedResourcePaths returns the chosen resource addresses, sorted. The
+// selection map holds only resource leaves — module rows are never stored.
+func selectedResourcePaths(selected map[string]bool) []string {
+	paths := make([]string, 0, len(selected))
+	for value, isSelected := range selected {
+		if isSelected {
+			paths = append(paths, value)
 		}
 	}
-
-	// Start adding modules from the root
-	addModules("module", 0, true)
-
-	return choices
+	sort.Strings(paths)
+	return paths
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/jroimartin/gocui"
@@ -14,23 +13,36 @@ const (
 )
 
 type UI struct {
-	items         []SelectionItem
-	selectedItems map[string]bool
+	tree          []*treeNode     // the full module/resource tree
+	rows          []*treeNode     // currently visible nodes, flattened top to bottom
+	selectedItems map[string]bool // resource address -> selected
 	currentIndex  int
-	origin        int // Add this field to track scroll position
+	origin        int // tracks the scroll position
 	gui           *gocui.Gui
 	inStatePath   string
 	outStatePath  string
 }
 
-func newUI(choices []SelectionItem, inPath, outPath string) *UI {
-	return &UI{
-		items:         choices,
+func newUI(tree []*treeNode, inPath, outPath string) *UI {
+	ui := &UI{
+		tree:          tree,
 		selectedItems: make(map[string]bool),
-		currentIndex:  0,
-		origin:        0,
 		inStatePath:   inPath,
 		outStatePath:  outPath,
+	}
+	ui.rebuildRows()
+	return ui
+}
+
+// rebuildRows recomputes the visible rows after the tree's expansion state
+// changes, keeping the cursor within bounds.
+func (ui *UI) rebuildRows() {
+	ui.rows = flattenVisible(ui.tree)
+	if ui.currentIndex >= len(ui.rows) {
+		ui.currentIndex = len(ui.rows) - 1
+	}
+	if ui.currentIndex < 0 {
+		ui.currentIndex = 0
 	}
 }
 
@@ -153,9 +165,9 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 	v.Clear()
 
 	_, maxY := v.Size()
-	itemCount := len(ui.items)
+	rowCount := len(ui.rows)
 
-	// Adjust origin if cursor moves out of view
+	// Adjust the scroll origin so the cursor stays on screen.
 	if ui.currentIndex-ui.origin >= maxY {
 		ui.origin = ui.currentIndex - maxY + 1
 	}
@@ -163,38 +175,38 @@ func (ui *UI) updateMainView(g *gocui.Gui) error {
 		ui.origin = ui.currentIndex
 	}
 
-	// Display only visible items
 	endIndex := ui.origin + maxY
-	if endIndex > itemCount {
-		endIndex = itemCount
+	if endIndex > rowCount {
+		endIndex = rowCount
 	}
 
-	for _, item := range ui.items[ui.origin:endIndex] {
-		prefix := strings.Repeat("  ", item.Level)
-		if item.IsModule {
-			if item.IsExpanded {
-				prefix += "[-]"
-			} else {
-				prefix += "[+]"
-			}
-		} else {
-			prefix += "    "
+	for _, node := range ui.rows[ui.origin:endIndex] {
+		prefix := strings.Repeat("  ", node.level)
+		switch {
+		case node.isModule && node.expanded:
+			prefix += "[-]"
+		case node.isModule:
+			prefix += "[+]"
+		default:
+			prefix += "   "
 		}
 
-		selected := ""
-		if item.IsSelected {
-			selected = "[✓]"
-		} else {
-			selected = "[ ]"
+		check := "[ ]"
+		if nodeSelected(node, ui.selectedItems) {
+			check = "[✓]"
 		}
 
-		line := prefix + " " + selected + " " + item.Display
-		if _, err := fmt.Fprintln(v, line); err != nil {
+		display := node.label
+		if node.isModule {
+			display = fmt.Sprintf("%s (%d)", node.label, resourceCount(node))
+		}
+
+		if _, err := fmt.Fprintf(v, "%s %s %s\n", prefix, check, display); err != nil {
 			return fmt.Errorf("failed to write line: %w", err)
 		}
 	}
 
-	// Set cursor relative to origin
+	// Place the cursor relative to the scroll origin.
 	if err := v.SetCursor(0, ui.currentIndex-ui.origin); err != nil {
 		if err != gocui.ErrUnknownView {
 			return fmt.Errorf("failed to set cursor: %w", err)
@@ -210,52 +222,16 @@ func (ui *UI) updateSelectionView(g *gocui.Gui) error {
 	}
 	v.Clear()
 
-	// Count selected resources (excluding grouping items)
-	selectedCount := 0
-	selectedResources := make([]string, 0)
+	paths := selectedResourcePaths(ui.selectedItems)
 
-	for value, selected := range ui.selectedItems {
-		if selected {
-			// Find the corresponding item to check if it's a grouping
-			isGrouping := false
-			for _, item := range ui.items {
-				if item.Value == value && item.IsGrouping {
-					isGrouping = true
-					break
-				}
-			}
-			if !isGrouping {
-				selectedCount++
-			}
-			selectedResources = append(selectedResources, value)
-		}
-	}
-
-	// Sort resources for consistent display
-	sort.Strings(selectedResources)
-
-	// Show count
-	if _, err := fmt.Fprintf(v, "Selected: %d resource(s)\n\n", selectedCount); err != nil {
+	if _, err := fmt.Fprintf(v, "Selected: %d resource(s)\n\n", len(paths)); err != nil {
 		return fmt.Errorf("failed to write count: %w", err)
 	}
-
-	// Show selected resources with proper indentation
-	for _, resource := range selectedResources {
-		// Find the corresponding item to get its level
-		level := 0
-		for _, item := range ui.items {
-			if item.Value == resource {
-				level = item.Level
-				break
-			}
-		}
-
-		indent := strings.Repeat("    ", level)
-		if _, err := fmt.Fprintf(v, "%s• %s\n", indent, resource); err != nil {
+	for _, p := range paths {
+		if _, err := fmt.Fprintf(v, "• %s\n", p); err != nil {
 			return fmt.Errorf("failed to write resource: %w", err)
 		}
 	}
-
 	return nil
 }
 
@@ -263,8 +239,17 @@ func (ui *UI) quit(g *gocui.Gui, v *gocui.View) error {
 	return gocui.ErrQuit
 }
 
+// currentNode returns the tree node under the cursor, or nil when there are no
+// rows.
+func (ui *UI) currentNode() *treeNode {
+	if ui.currentIndex < 0 || ui.currentIndex >= len(ui.rows) {
+		return nil
+	}
+	return ui.rows[ui.currentIndex]
+}
+
 func (ui *UI) cursorDown(g *gocui.Gui, v *gocui.View) error {
-	if ui.currentIndex < len(ui.items)-1 {
+	if ui.currentIndex < len(ui.rows)-1 {
 		ui.currentIndex++
 	}
 	return ui.updateViews(g)
@@ -277,108 +262,57 @@ func (ui *UI) cursorUp(g *gocui.Gui, v *gocui.View) error {
 	return ui.updateViews(g)
 }
 
+// toggleSelection flips the cursor row. For a module it selects or deselects
+// every resource leaf beneath it, at any depth.
 func (ui *UI) toggleSelection(g *gocui.Gui, v *gocui.View) error {
-	item := &ui.items[ui.currentIndex]
-	item.IsSelected = !item.IsSelected
-	ui.selectedItems[item.Value] = item.IsSelected
-
-	// If it's a module, select/deselect all its resources
-	if item.IsModule {
-		// Use the exact resource paths with indices
-		for _, resource := range item.Resources {
-			fullPath := item.Value + "." + resource
-			ui.selectedItems[fullPath] = item.IsSelected
-		}
-
-		// Update visible resource selections if expanded
-		if item.IsExpanded {
-			for i := ui.currentIndex + 1; i < len(ui.items); i++ {
-				if ui.items[i].Level <= item.Level {
-					break
-				}
-				ui.items[i].IsSelected = item.IsSelected
-			}
-		}
-	}
-	return ui.updateViews(g)
-}
-
-func (ui *UI) toggleExpand(g *gocui.Gui, v *gocui.View) error {
-	item := &ui.items[ui.currentIndex]
-	if !item.IsModule {
+	node := ui.currentNode()
+	if node == nil {
 		return nil
 	}
 
-	if item.IsExpanded {
-		ui.collapseModule(item)
-	} else {
-		ui.expandModule(item)
+	newState := !nodeSelected(node, ui.selectedItems)
+	for _, leaf := range leafValues(node) {
+		ui.selectedItems[leaf] = newState
 	}
 	return ui.updateViews(g)
 }
 
-func (ui *UI) expandModule(item *SelectionItem) {
-	if !item.IsModule || item.IsExpanded {
-		return
+// toggleExpand expands or collapses the module under the cursor.
+func (ui *UI) toggleExpand(g *gocui.Gui, v *gocui.View) error {
+	node := ui.currentNode()
+	if node == nil || !node.isModule {
+		return nil
 	}
 
-	// Create new items for module resources
-	newItems := make([]SelectionItem, 0, len(item.Resources))
-
-	for _, resource := range item.Resources {
-		// The resource string already includes indices from resources.go
-		fullPath := "module." + item.ModuleName + "." + resource
-
-		newItems = append(newItems, SelectionItem{
-			Display:    resource, // Show just the resource part (which includes indices)
-			Value:      fullPath, // Keep full path for selection/state operations
-			IsModule:   false,
-			ModuleName: item.ModuleName,
-			Level:      item.Level + 1,
-			IsSelected: ui.selectedItems[fullPath],
-		})
-	}
-
-	// Find position to insert
-	pos := -1
-	for i, it := range ui.items {
-		if it.Value == item.Value {
-			pos = i
-			break
-		}
-	}
-
-	if pos >= 0 {
-		ui.items = append(ui.items[:pos+1], append(newItems, ui.items[pos+1:]...)...)
-		item.IsExpanded = true
-	}
+	node.expanded = !node.expanded
+	ui.rebuildRows()
+	return ui.updateViews(g)
 }
 
-func (ui *UI) collapseModule(item *SelectionItem) {
-	if !item.IsModule || !item.IsExpanded {
-		return
+// collapseCurrentModule collapses the module under the cursor, or, when the
+// cursor is not on an expanded module, the nearest expanded ancestor module.
+func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
+	node := ui.currentNode()
+	if node == nil {
+		return nil
 	}
 
-	// Find the range of items to remove
-	start := -1
-	end := -1
-	for i, it := range ui.items {
-		if it.Value == item.Value {
-			start = i + 1
-		} else if start >= 0 && it.Level <= item.Level {
-			end = i
-			break
+	if node.isModule && node.expanded {
+		node.expanded = false
+		ui.rebuildRows()
+		return ui.updateViews(g)
+	}
+
+	for i := ui.currentIndex - 1; i >= 0; i-- {
+		ancestor := ui.rows[i]
+		if ancestor.isModule && ancestor.expanded && ancestor.level < node.level {
+			ancestor.expanded = false
+			ui.currentIndex = i
+			ui.rebuildRows()
+			return ui.updateViews(g)
 		}
 	}
-	if end == -1 {
-		end = len(ui.items)
-	}
-
-	if start >= 0 && end > start {
-		// Remove the expanded items
-		ui.items = append(ui.items[:start], ui.items[end:]...)
-		item.IsExpanded = false
-	}
+	return nil
 }
 
 func (ui *UI) goToTop(g *gocui.Gui, v *gocui.View) error {
@@ -388,7 +322,10 @@ func (ui *UI) goToTop(g *gocui.Gui, v *gocui.View) error {
 }
 
 func (ui *UI) goToBottom(g *gocui.Gui, v *gocui.View) error {
-	ui.currentIndex = len(ui.items) - 1
+	ui.currentIndex = len(ui.rows) - 1
+	if ui.currentIndex < 0 {
+		ui.currentIndex = 0
+	}
 	return ui.updateViews(g)
 }
 
@@ -404,26 +341,11 @@ func (ui *UI) pageUp(g *gocui.Gui, v *gocui.View) error {
 func (ui *UI) pageDown(g *gocui.Gui, v *gocui.View) error {
 	_, maxY := v.Size()
 	ui.currentIndex += maxY
-	if ui.currentIndex >= len(ui.items) {
-		ui.currentIndex = len(ui.items) - 1
+	if ui.currentIndex >= len(ui.rows) {
+		ui.currentIndex = len(ui.rows) - 1
+	}
+	if ui.currentIndex < 0 {
+		ui.currentIndex = 0
 	}
 	return ui.updateViews(g)
-}
-
-func (ui *UI) collapseCurrentModule(g *gocui.Gui, v *gocui.View) error {
-	item := &ui.items[ui.currentIndex]
-	if item.IsModule && item.IsExpanded {
-		ui.collapseModule(item)
-		return ui.updateViews(g)
-	}
-
-	// If not on a module, try to collapse parent module
-	for i := ui.currentIndex - 1; i >= 0; i-- {
-		if ui.items[i].IsModule && ui.items[i].IsExpanded && ui.items[i].Level < item.Level {
-			ui.collapseModule(&ui.items[i])
-			return ui.updateViews(g)
-		}
-	}
-
-	return nil
 }
