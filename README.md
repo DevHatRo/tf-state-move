@@ -6,7 +6,7 @@ Terraform State Move is a Go-based CLI tool designed to help you organize and ma
 
 ### Prerequisites
 
-- Go 1.26 or later
+- Go 1.27 or later
 - Make (optional, for using Makefile targets)
 
 ### Build Scripts
