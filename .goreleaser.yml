@@ -46,22 +46,10 @@ archives:
       - LICENSE
 
 release:
-  # Customize the release
-  header: |
-    ## tf-state-move {{ .Version }}
-
-    ### Binaries:
-    - Linux:
-      - AMD64: `tf-state-move-linux-amd64`
-      - ARM64: `tf-state-move-linux-arm64`
-      - ARMv6: `tf-state-move-linux-arm-6`
-      - ARMv7: `tf-state-move-linux-arm-7`
-    - macOS:
-      - AMD64: `tf-state-move-darwin-amd64`
-      - ARM64: `tf-state-move-darwin-arm64` (Apple Silicon)
-    - Windows:
-      - AMD64: `tf-state-move-windows-amd64.exe`
-      - ARM64: `tf-state-move-windows-arm64.exe`
+  # release-please creates the GitHub release (and tag) with the changelog as
+  # its body; GoReleaser only uploads the artifacts to it and leaves the
+  # name/body untouched.
+  mode: keep-existing
 
 checksum:
   name_template: "checksums.txt"
@@ -69,29 +57,30 @@ checksum:
 snapshot:
   version_template: "{{ incpatch .Version }}-next"
 
+# Release notes come from release-please (CHANGELOG.md).
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^ci:"
-      - Merge pull request
-      - Merge branch
+  disable: true
 
-brews:
+homebrew_casks:
   - name: tf-state-move
     repository:
       owner: DevHatRo
       name: homebrew-tap
       token: "{{ .Env.HOMEBREW_TAP_TOKEN }}"
+    directory: Casks
     commit_author:
       name: goreleaserbot
       email: bot@goreleaser.com
     homepage: "https://github.com/DevHatRo/tf-state-move"
     description: "A tool to move resources between Terraform state files"
-    license: "MIT"
-    test: |
-      system "#{bin}/tf-state-move --version"
-    install: |
-      bin.install "tf-state-move"
+    # Don't auto-bump the cask on pre-releases/snapshots.
+    skip_upload: auto
+    binaries:
+      - tf-state-move
+    # Strip the quarantine xattr so the unsigned binary runs without Gatekeeper prompts.
+    hooks:
+      post:
+        install_steps: |
+          on_macos do
+            run "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", "{{ .StagedPath }}/tf-state-move"]
+          end

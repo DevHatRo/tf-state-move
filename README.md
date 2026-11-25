@@ -6,7 +6,7 @@ Terraform State Move is a Go-based CLI tool designed to help you organize and ma
 
 ### Prerequisites
 
-- Go 1.26 or later
+- Go 1.27.4 or later
 - Make (optional, for using Makefile targets)
 
 ### Build Scripts
@@ -66,9 +66,12 @@ go install github.com/DevHatRo/tf-state-move@latest
 # Tap the repository
 brew tap DevHatRo/homebrew-tap
 
-# Install the tool
-brew install tf-state-move
+# Install the tool (published as a cask)
+brew install --cask tf-state-move
 ```
+
+Releases up to v1.1.2 were published as a formula. If you installed that, remove it
+before switching to the cask: `brew uninstall tf-state-move && brew install --cask tf-state-move`.
 
 ### Manual Installation
 
