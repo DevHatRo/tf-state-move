@@ -66,8 +66,8 @@ go install github.com/DevHatRo/tf-state-move@latest
 # Tap the repository
 brew tap DevHatRo/homebrew-tap
 
-# Install the tool
-brew install tf-state-move
+# Install the tool (published as a cask)
+brew install --cask tf-state-move
 ```
 
 ### Manual Installation
